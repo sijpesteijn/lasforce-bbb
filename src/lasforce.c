@@ -11,7 +11,9 @@
 #include <pthread.h>
 
 #include "../include/objects/laser.h"
+#include "../include/animation/animation.h"
 #include "examples.h"
+#include "readildafile.h"
 
 Object LaserProto = {
     .init = Laser_init,
@@ -29,8 +31,11 @@ void* messageListener(void* param) {
 
 void* animationPlayer(void* param) {
 	Laser *laser = NEW(Laser,"Beaglebone Black");
-	drawSquare(laser, 1000);
-	drawLogo(laser, 100);
+
+	char *data = readFile("/root/bbclib/jpoint.las");
+	Animation *animation = animation_deserialize(data, sizeof(data));
+//	drawSquare(laser, 1000);
+//	drawLogo(laser, 100);
 
 	laser->_(setRed)(laser, 0);
 	laser->_(setGreen)(laser, 0);
