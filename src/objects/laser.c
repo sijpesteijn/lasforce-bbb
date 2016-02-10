@@ -6,12 +6,36 @@
  */
 
 #include "../../include/objects/laser.h"
+#include <fcntl.h>
+#include <syslog.h>
 
+FILE *openFile(int gpio_nr) {
+	FILE *fd;
+	char buf[MAX_BUF];
+
+	snprintf(buf, sizeof(buf), SYSFS_GPIO_DIR "/gpio%d/value", gpio_nr);
+
+	fd = fopen(buf, "w");
+	if (fd < 0) {
+		printf("gpio/set-value");
+		return 1;
+	}
+
+	return fd;
+}
+
+void chip_select(gpio_properties *gpio, char *value) {
+	fputs(value, gpio->value_file_descriptor);
+	fflush(gpio->value_file_descriptor);
+
+}
 int Laser_init(void *self) {
 	Laser *laser = self;
-	unsigned char mcp23s08_setup[] = { 0x40, 0x00, 0x00, };
 
+	// Start log and open slots file
 	init_bbc_lib();
+
+	// Load the spi_dev0 device tree overlay
 	overlay *ol = malloc(sizeof(overlay));
 	ol->file_name = "BBCLIB-SPI0";
 	ol->board_name = "BBCLib";
@@ -21,6 +45,18 @@ int Laser_init(void *self) {
 	load_device_tree_overlay(ol);
 	free(ol);
 
+	// Setup mcp49xx (gpio's)
+	laser->axis_gpio = malloc(sizeof(gpio_properties));
+	laser->axis_gpio->nr = 60;
+	laser->axis_gpio->direction = OUTPUT_PIN;
+	laser->colors1_gpio = malloc(sizeof(gpio_properties));
+	laser->colors1_gpio->nr = 15;
+	laser->colors1_gpio->direction = OUTPUT_PIN;
+	laser->colors2_gpio = malloc(sizeof(gpio_properties));
+	laser->colors2_gpio->nr = 48;
+	laser->colors2_gpio->direction = OUTPUT_PIN;
+
+	// Setup spi bus
 	laser->spi = malloc(sizeof(spi_properties));
 	laser->spi->spi_id = spi0;
 	laser->spi->bits_per_word = 8;
@@ -28,101 +64,108 @@ int Laser_init(void *self) {
 	laser->spi->speed = 10000000;
 	laser->spi->flags = O_RDWR;
 
-	uint8_t isOpen = spi_open(laser->spi);
+//	spi->spi_id = spi0;
+//	spi->bits_per_word = 8;
+//	spi->mode = 3;
+//	spi->speed = 2400000;
+//	spi->flags = O_RDWR;
 
-	if (isOpen == 0) {
-		spi_send(laser->spi, mcp23s08_setup, sizeof(mcp23s08_setup));
-//		syslog(LOG_INFO, "%s", "Laser initialized.");
+
+	uint8_t isOpen = spi_open(laser->spi);
+	uint8_t isAxisOpen = gpio_open(laser->axis_gpio);
+	uint8_t isColors1Open = gpio_open(laser->colors1_gpio);
+	uint8_t isColors2Open = gpio_open(laser->colors2_gpio);
+
+	if (isOpen == 0 && isAxisOpen == 0 && isColors1Open == 0 && isColors2Open == 0) {
+		laser->axis_gpio->value_file_descriptor = openFile(laser->axis_gpio->nr);
+		laser->colors1_gpio->value_file_descriptor = openFile(laser->colors1_gpio->nr);
+		laser->colors2_gpio->value_file_descriptor = openFile(laser->colors2_gpio->nr);
+
+		chip_select(laser->axis_gpio, "1");
+		chip_select(laser->colors1_gpio, "1");
+		chip_select(laser->colors1_gpio, "1");
+
+		syslog(LOG_INFO, "%s", "Laser initialized.");
 		return 1;
 	}
-//	syslog(LOG_INFO, "%s", "FAILED to initialize Laser.");
+	syslog(LOG_INFO, "%s", "FAILED to initialize Laser.");
 	return 1;
 }
 
-int set_MCP23S08_GPIO_values(spi_properties *spi, unsigned char value) {
-	unsigned char mcp23s08_gpios[] = { 0x40, 0x09, 0x00, };
-	mcp23s08_gpios[2] = value;
-//	dprint(value);
-	spi_send(spi, mcp23s08_gpios, sizeof(mcp23s08_gpios));
-	return 1;
-}
-
-int send_MCP49x2_values(spi_properties *spi, unsigned char value) {
-	int bit_position = 8;
-	while(bit_position > 0) {
-		unsigned char bit_to_send = (value & 0x80) >> 2;
-//		dprint(bit_to_send);
-		unsigned char clkdata = bit_to_send;
-		set_MCP23S08_GPIO_values(spi, clkdata);
-		clkdata = (MCP23S08_SCK | bit_to_send);
-		set_MCP23S08_GPIO_values(spi, clkdata);
-		bit_position--;
-		value = value << 1;
-	}
-	return 1;
-}
-
-void set_MCP49x2(unsigned char data[2], unsigned char chip, spi_properties* spi) {
-	set_MCP23S08_GPIO_values(spi, chip | MCP23S08_SCK | MCP23S08_SDI);
-	set_MCP23S08_GPIO_values(spi, MCP23S08_SCK | MCP23S08_SDI);
-	set_MCP23S08_GPIO_values(spi, MCP23S08_SDI);
-	set_MCP23S08_GPIO_values(spi, MCP23S08_ALL_DOWN);
-	send_MCP49x2_values(spi, data[0]);
-	send_MCP49x2_values(spi, data[1]);
-	set_MCP23S08_GPIO_values(spi, MCP23S08_SCK | MCP23S08_SDI);
-	set_MCP23S08_GPIO_values(spi, chip | MCP23S08_SCK | MCP23S08_SDI);
-}
-
-int Laser_sendData(void *self, unsigned char value, int length, unsigned char  chip, unsigned char reg) {
-	Laser *laser = self;
+void write8Bits(spi_properties *spi, unsigned char reg, unsigned char value) {
 	unsigned char data[2] = {};
 	data[0] = reg | ((value & 0xf0) >> 4);
 	data[1] = (value & 0x0f) << 4;
-	set_MCP49x2(data, chip, laser->spi);
-//	syslog(LOG_INFO, "value = %i  chip=%i  register=0x%02x", value, chip, reg);
-	return 0;
+	if (spi_send(spi, data, sizeof(data)) == -1) {
+		perror("Failed to update output.");
+	}
+}
+
+void write12Bits(spi_properties *spi, unsigned char reg, unsigned short value) {
+	unsigned char data[2] = {};
+	data[0] = reg | ((value & 0xff00) >> 8);
+	data[1] = (value & 0x00ff);
+	if (spi_send(spi, data, sizeof(data)) == -1) {
+		perror("Failed to update output.");
+	}
 }
 
 int Laser_setX(void *self, int x) {
 	Laser *laser = self;
 	int value = x;
-//	syslog(LOG_INFO, "Laser setX value: %i.", value);
-	laser->_(sendData)(self, value, 16, MCP4922_CS, 0x70);
+//	syslog(LOG_DEBUG, "Laser setX value: %i.", value);
+	chip_select(laser->axis_gpio, "0");
+	write12Bits(laser->spi, 0x70, value);
+	chip_select(laser->axis_gpio, "1");
 	return 0;
 }
 
 int Laser_setY(void *self, int y) {
 	Laser *laser = self;
 	int value = y;
-//	syslog(LOG_INFO, "Laser setY value: %i.", value);
-	laser->_(sendData)(laser, value, 16, MCP4922_CS, 0xf0);
+//	syslog(LOG_DEBUG, "Laser setY value: %i.", value);
+	chip_select(laser->axis_gpio, "0");
+	write12Bits(laser->spi, 0xf0, value);
+	chip_select(laser->axis_gpio, "1");
 	return 0;
 }
 
 int Laser_setRed(void *self, int red) {
 	Laser *laser = self;
-//	syslog(LOG_INFO, "Laser setRed value: %i.", red);
-	laser->_(sendData)(laser, red, 8, MCP4902_1_CS, 0x70);
+//	syslog(LOG_DEBUG, "Laser setRed value: %i.", red);
+	chip_select(laser->colors1_gpio, "0");
+	write8Bits(laser->spi, 0x70, red);
+	chip_select(laser->colors1_gpio, "1");
 	return 0;
 }
 
 int Laser_setGreen(void *self, int green) {
 	Laser *laser = self;
-//	syslog(LOG_INFO, "Laser setGreen value: %i.", green);
-	laser->_(sendData)(laser, green, 8, MCP4902_1_CS, 0xf0);
+//	syslog(LOG_DEBUG, "Laser setGreen value: %i.", green);
+	chip_select(laser->colors1_gpio, "0");
+	write8Bits(laser->spi, 0xf0, green);
+	chip_select(laser->colors1_gpio, "1");
 	return 0;
 }
 
 int Laser_setBlue(void *self, int blue) {
 	Laser *laser = self;
-	laser->_(sendData)(laser, blue, 8, MCP4902_2_CS, 0x70);
-//	syslog(LOG_INFO, "Laser setBlue value: %i.", blue);
+//	syslog(LOG_DEBUG, "Laser setBlue value: %i.", blue);
+	chip_select(laser->colors2_gpio, "0");
+	write8Bits(laser->spi, 0xf0, blue);
+	chip_select(laser->colors2_gpio, "1");
 	return 0;
 }
 
 void Laser_destroy(void *self) {
 	Laser *laser = self;
 	free(laser->spi);
+	gpio_close(laser->axis_gpio);
+	free(laser->axis_gpio);
+	gpio_close(laser->colors1_gpio);
+	free(laser->colors1_gpio);
+	gpio_close(laser->colors2_gpio);
+	free(laser->colors2_gpio);
 	free(laser);
-//	syslog(LOG_INFO, "%s", "Laser destroyed.");
+	syslog(LOG_INFO, "%s", "Laser destroyed.");
 }

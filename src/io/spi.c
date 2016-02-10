@@ -8,6 +8,9 @@
 #include "../../include/io/spi.h"
 #include <sys/ioctl.h>
 #include <linux/spi/spidev.h>
+#include <fcntl.h>
+#include <syslog.h>
+
 
 uint8_t spi_open(spi_properties *spi) {
 //	syslog (LOG_INFO, "spi open - spi:%d bits_per_word:%d speed:%d mode:%f", spi, bits_per_word, speed, mode);
@@ -33,15 +36,15 @@ uint8_t spi_open(spi_properties *spi) {
     }
 
     // Check that the properties have been set
-//    syslog (LOG_INFO,"SPI fd is: %d\n", spi->fd);
-//    syslog (LOG_INFO,"SPI Mode is: %d\n", spi->mode);
-//    syslog (LOG_INFO,"SPI Bits is: %d\n", spi->bits_per_word);
-//    syslog (LOG_INFO,"SPI Speed is: %d\n", spi->speed);
+    syslog (LOG_INFO,"SPI fd is: %d\n", spi->fd);
+    syslog (LOG_INFO,"SPI Mode is: %d\n", spi->mode);
+    syslog (LOG_INFO,"SPI Bits is: %d\n", spi->bits_per_word);
+    syslog (LOG_INFO,"SPI Speed is: %d\n", spi->speed);
     return 0;
 }
 
 uint8_t spi_close(spi_properties *spi) {
-//	syslog (LOG_INFO, "spi close - spi:%d", spi->fd);
+	syslog (LOG_INFO, "spi close - spi:%d", spi->fd);
     close(spi->fd);
     return 0;
 }

@@ -10,6 +10,7 @@
 
 #include "object.h"
 #include "../io/spi.h"
+#include "../io/gpio.h"
 
 //#define MCP4922_CS 60;
 //#define MCP4902_1_CS 15;
@@ -39,6 +40,9 @@
 struct Laser {
 	Object proto;
 	spi_properties *spi;
+	gpio_properties *axis_gpio;
+	gpio_properties *colors1_gpio;
+	gpio_properties *colors2_gpio;
 };
 
 typedef struct Laser Laser;
@@ -51,5 +55,4 @@ int Laser_setRed(void *self, int red);
 int Laser_setGreen(void *self, int green);
 int Laser_setBlue(void *self, int blue);
 void Laser_destroy(void *self);
-int Laser_sendData(void *self, unsigned char value, int length, unsigned char  chip, unsigned char reg);
 #endif /* LASER_H_ */

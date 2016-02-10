@@ -22,7 +22,6 @@ typedef struct {
     int (*setRed)(void *self, int red);
     int (*setBlue)(void *self, int blue);
     int (*setGreen)(void *self, int green);
-    int (*sendData)(void *self, unsigned char value, int length, unsigned char chip, unsigned char reg);
 } Object;
 
 int Object_init(void *self);
@@ -33,7 +32,6 @@ int Object_setY(void *self, int y);
 int Object_setRed(void *self, int red);
 int Object_setBlue(void *self, int blue);
 int Object_setGreen(void *self, int green);
-int Object_sendData(void *self, unsigned char value, int length, unsigned char chip, unsigned char reg);
 void *Object_new(size_t size, Object proto, char *description);
 
 #define NEW(T, N) Object_new(sizeof(T), T##Proto, N)

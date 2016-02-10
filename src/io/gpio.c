@@ -40,6 +40,7 @@ int gpio_open(gpio_properties *gpio) {
 
 int gpio_close(gpio_properties *gpio) {
 	syslog (LOG_INFO, "gpio_close: unexport gpio: %d", gpio->nr);
+	fclose(gpio->value_file_descriptor);
 	FILE *fd;
 	fd = fopen(SYSFS_GPIO_DIR "/unexport", "w");
 	if (fd < 0) {
@@ -55,7 +56,7 @@ int gpio_close(gpio_properties *gpio) {
 }
 
 int gpio_set_value(gpio_properties *gpio, int value) {
-	syslog (LOG_INFO, "gpio set value: %d, %d", gpio->nr, value);
+//	syslog (LOG_INFO, "gpio set value: %d, %d", gpio->nr, value);
 	FILE *fd;
 	char buf[MAX_BUF];
 

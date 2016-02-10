@@ -82,7 +82,6 @@ void *Object_new(size_t size, Object proto, char *description)
     if(!proto.setRed) proto.setRed = Object_setRed;
     if(!proto.setBlue) proto.setBlue = Object_setBlue;
     if(!proto.setGreen) proto.setGreen = Object_setGreen;
-    if(!proto.sendData) proto.sendData = Object_sendData;
     // this seems weird, but we can make a struct of one size,
     // then point a different pointer at it to "cast" it
     Object *el = calloc(1, size);
