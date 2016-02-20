@@ -8,6 +8,8 @@
 #ifndef INCLUDE_ILDA_H_
 #define INCLUDE_ILDA_H_
 
+#include "../objects/laser.h"
+
 typedef struct {
 	int id;
 	int repeat;
@@ -30,12 +32,14 @@ typedef struct {
 } Coordinate;
 
 typedef struct {
-	int totalSegments;
 	int id;
+	int totalSegments;
+	int repeat;
 } FrameMetadata;
 
 typedef struct {
 	Color* color;
+	int totalCoordinates;
 	Coordinate **coordinates;
 } Segment;
 
@@ -49,6 +53,7 @@ typedef struct {
 	Frame **frames;
 } Animation;
 
-void destroyAnimation(Animation *animation);
+int destroy_animation(Animation *animation);
+void animation_draw(Laser *laser, Animation *animation);
 
 #endif /* INCLUDE_ILDA_H_ */

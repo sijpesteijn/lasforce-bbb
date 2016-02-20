@@ -30,8 +30,7 @@ void drawLetter(int size, const int letter[size][2], Laser *laser) {
 	for(i=0;i<size;i++) {
 		int x = (letter[i][0]*10);
 		int y = (letter[i][1]*10);
-		laser->_(setX)(laser, x);
-		laser->_(setY)(laser, y);
+		laser->_(setCoordinate)(laser, x, y);
 		usleep(10);
 	}
 }
@@ -56,13 +55,9 @@ void drawSquare(Laser *laser, int repeat) {
 	laser->_(setBlue)(laser, 255);
 	int i = 0, delay = 1000;
 	while(i++ < repeat) {
-		laser->_(setX)(laser, 0);
+		laser->_(setCoordinate)(laser, 0, 0);
 		usleep(delay);
-		laser->_(setY)(laser, 0);
-		usleep(delay);
-		laser->_(setX)(laser, 3000);
-		usleep(delay);
-		laser->_(setY)(laser, 3000);
+		laser->_(setCoordinate)(laser, 3000,3000);
 		usleep(delay);
 	}
 }

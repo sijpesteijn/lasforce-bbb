@@ -39,8 +39,11 @@
 
 struct Laser {
 	Object proto;
+	int x;
+	int y;
 	spi_properties *spi;
 	gpio_properties *axis_gpio;
+	gpio_properties *axis_ldac_gpio;
 	gpio_properties *colors1_gpio;
 	gpio_properties *colors2_gpio;
 };
@@ -49,8 +52,7 @@ typedef struct Laser Laser;
 
 int Laser_init(void *self);
 void Laser_describe(void *self);
-int Laser_setX(void *self, int x);
-int Laser_setY(void *self, int y);
+int Laser_setCoordinate(void *self, int x, int y);
 int Laser_setRed(void *self, int red);
 int Laser_setGreen(void *self, int green);
 int Laser_setBlue(void *self, int blue);

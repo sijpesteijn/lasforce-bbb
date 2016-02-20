@@ -44,13 +44,14 @@ AnimationMetadata *deserializeAnimationMetadata(json_t *animationMetadataJson) {
 	animationMetadata->minHeight = getInt(animationMetadataJson, "min_height");
 	animationMetadata->maxWidth = getInt(animationMetadataJson, "max_width");
 	animationMetadata->minWidth = getInt(animationMetadataJson, "min_width");
-	animationMetadata->nrOfFrames = getInt(animationMetadataJson, "nr_of_frames");
+	animationMetadata->nrOfFrames = getInt(animationMetadataJson, "total_frames");
 	return animationMetadata;
 }
 
 FrameMetadata *deserializeFrameMetadata(json_t *frameMetadataJson) {
 	FrameMetadata *frameMetadata = malloc(sizeof(FrameMetadata));
 	frameMetadata->id = getInt(frameMetadataJson, "id");
+	frameMetadata->repeat = getInt(frameMetadataJson, "repeat");
 	frameMetadata->totalSegments = getInt(frameMetadataJson, "total_segments");
 	return frameMetadata;
 }
@@ -89,6 +90,7 @@ Segment *deserializeSegment(json_t *segmentJson) {
 			coordinates[i] = coordinate;
 		}
 		segment->coordinates = coordinates;
+		segment->totalCoordinates = totalCoordinates;
 	}
 	return segment;
 }
@@ -106,7 +108,7 @@ Frame *deserializeFrame(json_t* frameJson) {
 		Segment **segments = malloc(totalSegments * sizeof(Segment));
 		int i = 0;
 		for(i = 0; i < totalSegments; i++) {
-			json_t *segmentJson = json_array_get(segmentsJson, 1);
+			json_t *segmentJson = json_array_get(segmentsJson, i);
 			Segment *segment = deserializeSegment(segmentJson);
 			segments[i] = segment;
 		}
@@ -115,7 +117,7 @@ Frame *deserializeFrame(json_t* frameJson) {
 	return frame;
 }
 
-Animation *deserialize(json_t* root) {
+static Animation *deserialize(json_t* root) {
 	AnimationMetadata *aniationMetadata = NULL;
 	Frame **frames = NULL;
 	int totalFrames = 0;

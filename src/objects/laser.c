@@ -18,7 +18,7 @@ FILE *openFile(int gpio_nr) {
 	fd = fopen(buf, "w");
 	if (fd < 0) {
 		printf("gpio/set-value");
-		return 1;
+		return NULL;
 	}
 
 	return fd;
@@ -27,8 +27,8 @@ FILE *openFile(int gpio_nr) {
 void chip_select(gpio_properties *gpio, char *value) {
 	fputs(value, gpio->value_file_descriptor);
 	fflush(gpio->value_file_descriptor);
-
 }
+
 int Laser_init(void *self) {
 	Laser *laser = self;
 
@@ -49,6 +49,9 @@ int Laser_init(void *self) {
 	laser->axis_gpio = malloc(sizeof(gpio_properties));
 	laser->axis_gpio->nr = 60;
 	laser->axis_gpio->direction = OUTPUT_PIN;
+	laser->axis_ldac_gpio = malloc(sizeof(gpio_properties));
+	laser->axis_ldac_gpio->nr = 115;
+	laser->axis_ldac_gpio->direction = OUTPUT_PIN;
 	laser->colors1_gpio = malloc(sizeof(gpio_properties));
 	laser->colors1_gpio->nr = 15;
 	laser->colors1_gpio->direction = OUTPUT_PIN;
@@ -64,26 +67,24 @@ int Laser_init(void *self) {
 	laser->spi->speed = 10000000;
 	laser->spi->flags = O_RDWR;
 
-//	spi->spi_id = spi0;
-//	spi->bits_per_word = 8;
-//	spi->mode = 3;
-//	spi->speed = 2400000;
-//	spi->flags = O_RDWR;
-
-
 	uint8_t isOpen = spi_open(laser->spi);
 	uint8_t isAxisOpen = gpio_open(laser->axis_gpio);
+	uint8_t isAxisLDACOpen = gpio_open(laser->axis_ldac_gpio);
 	uint8_t isColors1Open = gpio_open(laser->colors1_gpio);
 	uint8_t isColors2Open = gpio_open(laser->colors2_gpio);
 
-	if (isOpen == 0 && isAxisOpen == 0 && isColors1Open == 0 && isColors2Open == 0) {
+	if (isOpen == 0 && isAxisOpen == 0 && isAxisLDACOpen == 0 &&  isColors1Open == 0 && isColors2Open == 0) {
 		laser->axis_gpio->value_file_descriptor = openFile(laser->axis_gpio->nr);
+		laser->axis_ldac_gpio->value_file_descriptor = openFile(laser->axis_ldac_gpio->nr);
 		laser->colors1_gpio->value_file_descriptor = openFile(laser->colors1_gpio->nr);
 		laser->colors2_gpio->value_file_descriptor = openFile(laser->colors2_gpio->nr);
 
 		chip_select(laser->axis_gpio, "1");
+		chip_select(laser->axis_ldac_gpio, "1");
 		chip_select(laser->colors1_gpio, "1");
 		chip_select(laser->colors1_gpio, "1");
+		laser->x = 0;
+		laser->y = 0;
 
 		syslog(LOG_INFO, "%s", "Laser initialized.");
 		return 1;
@@ -110,23 +111,19 @@ void write12Bits(spi_properties *spi, unsigned char reg, unsigned short value) {
 	}
 }
 
-int Laser_setX(void *self, int x) {
+int Laser_setCoordinate(void *self, int x, int y) {
 	Laser *laser = self;
-	int value = x;
-//	syslog(LOG_DEBUG, "Laser setX value: %i.", value);
+	laser->x = x;
+	laser->y = y;
 	chip_select(laser->axis_gpio, "0");
-	write12Bits(laser->spi, 0x70, value);
+	write12Bits(laser->spi, 0x70, x);
 	chip_select(laser->axis_gpio, "1");
-	return 0;
-}
-
-int Laser_setY(void *self, int y) {
-	Laser *laser = self;
-	int value = y;
-//	syslog(LOG_DEBUG, "Laser setY value: %i.", value);
 	chip_select(laser->axis_gpio, "0");
-	write12Bits(laser->spi, 0xf0, value);
+	write12Bits(laser->spi, 0xf0, y);
 	chip_select(laser->axis_gpio, "1");
+	chip_select(laser->axis_ldac_gpio, "0");
+//	usleep(10);
+	chip_select(laser->axis_ldac_gpio, "1");
 	return 0;
 }
 
