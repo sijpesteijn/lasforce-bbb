@@ -45,16 +45,22 @@ void* messageListener(void* param) {
 	return NULL;
 }
 
+char *ilda = "peace.las";
+
 void* animationPlayer(void* param) {
 	char* data;
-	int i=0, length = readFile("/root/bbclib/examples/jpoint.las", &data);
+	char file[255];
+	strcpy(file, "/root/bbclib/examples/");
+	strcat(file, ilda);
+	printf("%s", file);
+	int i=0, length = readFile(file, &data);
 	Laser *laser = NEW(Laser,"Beaglebone Black");
-	Player *player = NEW(Player, laser);
+	Player *player = NEWPLAYER(Player, laser, "Animation Player");
 	Animation *animation = animation_deserialize(data, length);
 	int repeat = animation->animationMetadata->repeat;
 	while(i++ < repeat) {
-//		player->_(playAnimation)(player,animation);
-		animation_draw(laser, animation);
+		player->run = 1;
+		player->_(playAnimation)(player,animation);
 	}
 
 	laser->_(setRed)(laser, 0);
@@ -70,6 +76,10 @@ int main(int argc, char *argv[]) {
 	openlog("lasforce-bbb", LOG_PID | LOG_CONS | LOG_NDELAY | LOG_NOWAIT, LOG_LOCAL0);
 	syslog(LOG_INFO, "%s", "Starting LasForce...");
 
+	if (argc > 1) {
+		ilda = argv[1];
+		strcat(ilda, ".las");
+	}
 	pthread_t message_listener, animation_player;
 //	if (pthread_create(&message_listener,NULL, messageListener, NULL))
 //		perror("Can't create message_handler thread");

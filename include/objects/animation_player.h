@@ -14,11 +14,12 @@
 struct Player {
 	Object proto;
 	Laser *laser;
+	int run;
 };
 
 typedef struct Player Player;
 
-int Player_init(void *self);
+int Player_init(void *self, void *object);
 int Player_playAnimation(void *self, Animation *animation);
 
 #endif

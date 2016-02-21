@@ -54,6 +54,5 @@ typedef struct {
 } Animation;
 
 int destroy_animation(Animation *animation);
-void animation_draw(Laser *laser, Animation *animation);
 
 #endif /* INCLUDE_ILDA_H_ */

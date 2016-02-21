@@ -29,8 +29,10 @@ void chip_select(gpio_properties *gpio, char *value) {
 	fflush(gpio->value_file_descriptor);
 }
 
-int Laser_init(void *self) {
+int Laser_init(void *self, void *object) {
 	Laser *laser = self;
+
+	laser->pixels_per_bit = 65535/AXIS_MAX;
 
 	// Start log and open slots file
 	init_bbc_lib();

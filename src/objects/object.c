@@ -28,7 +28,7 @@ void Object_describe(void *self)
     syslog(LOG_INFO, "%s.", obj->description);
 }
 
-int Object_init(void *self)
+int Object_init(void *self, void *object)
 {
     // do nothing really
     return 1;
@@ -75,7 +75,7 @@ int Object_playAnimation(void *self, void *animation)
     return 0;
 }
 
-void *Object_new(size_t size, Object proto, char *description)
+void *Object_new(size_t size, Object proto, void *object,  char *description)
 {
 	syslog(LOG_INFO, "%s","Creating new object.");
     // setup the default functions in case they aren't set
@@ -91,7 +91,7 @@ void *Object_new(size_t size, Object proto, char *description)
     el->description = strdup(description);
 
     // initialize it with whatever init we were given
-    if(!el->init(el)) {
+    if(!el->init(el, object)) {
     	syslog(LOG_INFO, "%s","Failed to create object.");
         // looks like it didn't initialize properly
         el->destroy(el);
