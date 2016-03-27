@@ -36,26 +36,6 @@ char* getString(json_t* root, char* key) {
 	}
 }
 
-AnimationMetadata *deserializeAnimationMetadata(json_t *animationMetadataJson) {
-	AnimationMetadata *animationMetadata = malloc(sizeof(AnimationMetadata));
-	animationMetadata->id = getInt(animationMetadataJson, "id");
-	animationMetadata->repeat = getInt(animationMetadataJson, "repeat");
-	animationMetadata->maxHeight = getInt(animationMetadataJson, "max_height");
-	animationMetadata->minHeight = getInt(animationMetadataJson, "min_height");
-	animationMetadata->maxWidth = getInt(animationMetadataJson, "max_width");
-	animationMetadata->minWidth = getInt(animationMetadataJson, "min_width");
-	animationMetadata->nrOfFrames = getInt(animationMetadataJson, "total_frames");
-	return animationMetadata;
-}
-
-FrameMetadata *deserializeFrameMetadata(json_t *frameMetadataJson) {
-	FrameMetadata *frameMetadata = malloc(sizeof(FrameMetadata));
-	frameMetadata->id = getInt(frameMetadataJson, "id");
-	frameMetadata->repeat = getInt(frameMetadataJson, "repeat");
-	frameMetadata->totalSegments = getInt(frameMetadataJson, "total_segments");
-	return frameMetadata;
-}
-
 Color *deserializeColor(json_t *colorJson) {
 	Color *color = malloc(sizeof(Color));
 	color->red = json_number_value(json_array_get(colorJson, 0));
@@ -97,10 +77,7 @@ Segment *deserializeSegment(json_t *segmentJson) {
 
 Frame *deserializeFrame(json_t* frameJson) {
 	Frame *frame = malloc(sizeof(Frame));
-
-	json_t *frameMetadataJson = json_object_get(frameJson, "frame_metadata");
-	if (frameMetadataJson != NULL)
-		frame->frameMetadata = deserializeFrameMetadata(frameMetadataJson);
+	frame->totalSegments = getInt(frameJson, "total_segments");
 
 	json_t *segmentsJson = json_object_get(frameJson, "segments");
 	if (segmentsJson != NULL) {
@@ -118,14 +95,13 @@ Frame *deserializeFrame(json_t* frameJson) {
 }
 
 static Animation *deserialize(json_t* root) {
-	AnimationMetadata *aniationMetadata = NULL;
 	Frame **frames = NULL;
 	int totalFrames = 0;
 
-	json_t *animationMetadataJson = json_object_get(root, "animation_metadata");
-	if(animationMetadataJson != NULL) {
-		aniationMetadata = deserializeAnimationMetadata(animationMetadataJson);
-	}
+	Animation *animation = malloc(sizeof(Animation));
+	animation->id = getInt(root, "id");
+	animation->repeat = getInt(root, "repeat");
+	animation->nrOfFrames = getInt(root, "total_frames");
 
 	json_t *framesJson = json_object_get(root, "frames");
 	if(framesJson != NULL) {
@@ -139,8 +115,6 @@ static Animation *deserialize(json_t* root) {
 		}
 	}
 
-	Animation *animation = malloc(sizeof(Animation));
-	animation->animationMetadata = aniationMetadata;
 	animation->frames = frames;
 	return animation;
 }

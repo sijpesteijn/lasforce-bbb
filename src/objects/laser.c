@@ -29,7 +29,7 @@ void chip_select(gpio_properties *gpio, char *value) {
 	fflush(gpio->value_file_descriptor);
 }
 
-int Laser_init(void *self, void *object) {
+int Laser_init(void *self) {
 	Laser *laser = self;
 
 	laser->pixels_per_bit = 65535/AXIS_MAX;

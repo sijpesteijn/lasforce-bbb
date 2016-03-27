@@ -53,7 +53,7 @@ struct Laser {
 
 typedef struct Laser Laser;
 
-int Laser_init(void *self, void *object);
+int Laser_init(void *self);
 void Laser_describe(void *self);
 int Laser_setCoordinate(void *self, int x, int y);
 int Laser_setRed(void *self, int red);

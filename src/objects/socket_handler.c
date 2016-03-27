@@ -6,6 +6,7 @@
  */
 
 #include "../../include/objects/socket_handler.h"
+#include "../../include/jansson/jansson.h"
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <stdio.h>
@@ -47,17 +48,8 @@ int openSocket() {
 
 int SocketHandler_init(void *self) {
 	SocketHandler *handler = self;
-
 	handler->socket = openSocket();
 	return 1;
-}
-
-void SocketHandler_describe(void *self) {
-
-}
-
-void SocketHandler_destroy(void *self) {
-
 }
 
 int getMessageLength(int connect_d) {
@@ -68,7 +60,7 @@ int getMessageLength(int connect_d) {
 		perror("Can't reading size from socket");
 		exit(1);
 	}
-	message_size[12] = '\0';
+	message_size[n + 1] = '\0';
 	return atol(message_size);
 }
 
@@ -123,6 +115,30 @@ void freeSocketMessage(socket_message* socketMessage) {
 	}
 }
 
+static Command *deserialize(json_t* root) {
+	Command *command = malloc(sizeof(Command));
+	return command;
+}
+
+void* deserializeCommand(socket_message *message) {
+	json_t* root;
+	json_error_t error;
+	root = json_loadb(message->content, message->length, 0, &error);
+	if (!root) {
+		fprintf(stderr, "error: on line %d: %s\n", error.line, error.text);
+	}
+	if (!json_is_object(root)) {
+		fprintf(stderr, "error: commit data is not an object\n");
+		json_decref(root);
+	}
+	Command *command = deserialize(root);
+	// temporary
+	command->action = malloc(sizeof(char)*message->length);
+	strcpy(command->action,message->content);
+	return command;
+}
+
+
 void SocketHandler_listen(void *self) {
 	SocketHandler *handler = self;
 	struct sockaddr_storage client_addr;
@@ -134,11 +150,34 @@ void SocketHandler_listen(void *self) {
 			exit(1);
 		}
 		socket_message* message = NULL;
-		message = readSocketMessage(connect_d);
-		if(message->length > 0) {
-			printf("Msg: %s\n", message->content);
-//			handleMessage(message, handler);
+		for(;;) {
+			message = readSocketMessage(connect_d);
+			if(message->length > 0) {
+				Command *command = deserializeCommand(message);
+				QueueItem *queue_item = malloc(sizeof(struct QueueItem));
+				queue_item->command = command;
+				queue_item->next = NULL;
+
+				pthread_mutex_lock(&handler->queue->read_queue_lock);
+
+				// does not seem to work.
+				if (handler->queue->last == NULL) {
+					handler->queue->last = queue_item;
+				} else {
+					handler->queue->last->next = queue_item;
+					handler->queue->last = handler->queue->last->next;
+				}
+
+				if (handler->queue->current == NULL) {
+					printf("NEW QUEUE ELEMENT\n");
+					handler->queue->current = queue_item;
+				}
+				pthread_mutex_unlock(&handler->queue->read_queue_lock);
+				pthread_cond_signal(&handler->queue->queue_not_empty);
+				freeSocketMessage(message);
+			}
 		}
-		freeSocketMessage(message);
+		close(connect_d);
 	}
 }
+

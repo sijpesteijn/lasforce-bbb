@@ -14,7 +14,7 @@
 
 typedef struct {
     char *description;
-    int (*init)(void *self, void *object);
+    int (*init)(void *self);
     void (*describe)(void *self);
     void (*destroy)(void *self);
     int (*setCoordinate)(void *self, int x, int y);
@@ -22,10 +22,11 @@ typedef struct {
     int (*setBlue)(void *self, int blue);
     int (*setGreen)(void *self, int green);
     int (*playAnimation)(void *self, void* animation);
-    int (*listen)(void *self);
+    void (*douse)(void *self);
+    void (*listen)(void *self);
 } Object;
 
-int Object_init(void *self, void *object);
+int Object_init(void *self);
 void Object_describe(void *self);
 void Object_destroy(void *self);
 int Object_setCoordinate(void *self, int x, int y);
@@ -33,12 +34,11 @@ int Object_setRed(void *self, int red);
 int Object_setBlue(void *self, int blue);
 int Object_setGreen(void *self, int green);
 int Object_playAnimation(void *self, void *animation);
+void Object_douse(void *self);
 void Object_listen(void *self);
-//void *Object_new(size_t size, Object proto, char *description);
-void *Object_new(size_t size, Object proto, void *object, char *description);
+void *Object_new(size_t size, Object proto, char *description);
 
-#define NEW(T, N) Object_new(sizeof(T), T##Proto, NULL, N)
-#define NEWPLAYER(T, L, N) Object_new(sizeof(T), T##Proto, L, N)
+#define NEW(T, N) Object_new(sizeof(T), T##Proto, N)
 #define _(N) proto.N
 
 

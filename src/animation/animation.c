@@ -7,13 +7,14 @@
 
 #include "../../include/animation/animation.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 int destroy_animation(Animation *animation) {
 	int i=0;
-	for(i=0;i<animation->animationMetadata->nrOfFrames;i++) {
+	for(i=0;i<animation->nrOfFrames;i++) {
 		Frame *frame = animation->frames[i];
 		int j = 0;
-		for(j=0;j<frame->frameMetadata->totalSegments;j++) {
+		for(j=0;j<frame->totalSegments;j++) {
 			Segment *segment = frame->segments[j];
 			free(segment->color);
 			int c = 0;
@@ -25,7 +26,13 @@ int destroy_animation(Animation *animation) {
 		free(frame);
 	}
 	free(animation->frames);
-	free(animation->animationMetadata);
+	free(animation);
 
+	return 0;
+}
+
+int free_queue_item(QueueItem *queueItem) {
+//	free(queueItem->command);
+	free(queueItem);
 	return 0;
 }

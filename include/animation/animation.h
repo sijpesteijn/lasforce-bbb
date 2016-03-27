@@ -8,17 +8,7 @@
 #ifndef INCLUDE_ILDA_H_
 #define INCLUDE_ILDA_H_
 
-#include "../objects/laser.h"
-
-typedef struct {
-	int id;
-	int repeat;
-	int maxWidth;
-	int maxHeight;
-	int minWidth;
-	int minHeight;
-	int nrOfFrames;
-} AnimationMetadata;
+#include <pthread.h>
 
 typedef struct {
 	int red;
@@ -32,27 +22,40 @@ typedef struct {
 } Coordinate;
 
 typedef struct {
-	int id;
-	int totalSegments;
-	int repeat;
-} FrameMetadata;
-
-typedef struct {
 	Color* color;
 	int totalCoordinates;
 	Coordinate **coordinates;
 } Segment;
 
 typedef struct {
-	FrameMetadata *frameMetadata;
+	int totalSegments;
 	Segment **segments;
 } Frame;
 
 typedef struct {
-	AnimationMetadata *animationMetadata;
+	int id;
+	int repeat;
+	int nrOfFrames;
 	Frame **frames;
 } Animation;
 
+typedef struct {
+	char *action;
+} Command;
+
+typedef struct QueueItem {
+	Command *command;
+	struct QueueItem *next;
+} QueueItem;
+
+typedef struct Queue {
+	pthread_mutex_t read_queue_lock;
+	pthread_cond_t queue_not_empty;
+	struct QueueItem *current;
+	struct QueueItem *last;
+} Queue;
+
 int destroy_animation(Animation *animation);
+int free_queue_item(QueueItem *queueItem);
 
 #endif /* INCLUDE_ILDA_H_ */

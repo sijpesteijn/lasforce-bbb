@@ -9,6 +9,7 @@
 #define OBJECTS_SOCKET_HANDLER_H_
 
 #include "object.h"
+#include "../animation/animation.h"
 
 typedef struct {
 	char *content;
@@ -18,15 +19,14 @@ typedef struct {
 
 struct SocketHandler {
 	Object proto;
+	Queue *queue;
 	int socket;
 };
 
 typedef struct SocketHandler SocketHandler;
 
 int SocketHandler_init(void *self);
-void SocketHandler_describe(void *self);
 void SocketHandler_listen(void *self);
-void SocketHandler_destroy(void *self);
 
 
 #endif /* OBJECTS_SOCKET_HANDLER_H_ */

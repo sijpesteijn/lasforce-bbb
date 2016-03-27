@@ -10,6 +10,7 @@
 #include <syslog.h>
 #include <pthread.h>
 
+#include "../include/objects/object.h"
 #include "../include/objects/laser.h"
 #include "../include/animation/animation.h"
 #include "../include/animation/deserialize.h"
@@ -17,6 +18,15 @@
 #include "../include/objects/socket_handler.h"
 #include "examples.h"
 #include "readildafile.h"
+
+Queue *queue = NULL;
+pthread_mutex_t read_queue_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t queue_not_empty=PTHREAD_COND_INITIALIZER;
+
+Object SocketHandlerProto = {
+	.init = SocketHandler_init,
+	.listen = SocketHandler_listen
+};
 
 Object LaserProto = {
     .init = Laser_init,
@@ -27,48 +37,25 @@ Object LaserProto = {
 	.setGreen = Laser_setGreen,
 };
 
-Object SocketHandlerProto = {
-	.init = SocketHandler_init,
-	.describe = SocketHandler_describe,
-	.listen = SocketHandler_listen,
-	.destroy = SocketHandler_destroy
-};
-
 Object PlayerProto = {
 	.init = Player_init,
-	.playAnimation = Player_playAnimation,
+	.listen = Player_listen,
+	.douse = Player_douse
 };
 
 void* messageListener(void* param) {
 	SocketHandler *handler = NEW(SocketHandler, "Socket handler");
+	handler->queue = queue;
 	handler->_(listen)(handler);
 	return NULL;
 }
 
-char *ilda = "peace.las";
-
 void* animationPlayer(void* param) {
-	char* data;
-	char file[255];
-	strcpy(file, "/root/bbclib/examples/");
-	strcat(file, ilda);
-	printf("%s", file);
-	int i=0, length = readFile(file, &data);
 	Laser *laser = NEW(Laser,"Beaglebone Black");
-	Player *player = NEWPLAYER(Player, laser, "Animation Player");
-	Animation *animation = animation_deserialize(data, length);
-	int repeat = animation->animationMetadata->repeat;
-	while(i++ < repeat) {
-		player->run = 1;
-		player->_(playAnimation)(player,animation);
-	}
-
-	laser->_(setRed)(laser, 0);
-	laser->_(setGreen)(laser, 0);
-	laser->_(setBlue)(laser, 0);
-	laser->_(destroy)(laser);
-	destroy_animation(animation);
-
+	Player *player = NEW(Player, "Animation Player");
+	player->laser = laser;
+	player->queue = queue;
+	player->_(listen)(player);
 	return NULL;
 }
 
@@ -76,18 +63,18 @@ int main(int argc, char *argv[]) {
 	openlog("lasforce-bbb", LOG_PID | LOG_CONS | LOG_NDELAY | LOG_NOWAIT, LOG_LOCAL0);
 	syslog(LOG_INFO, "%s", "Starting LasForce...");
 
-	if (argc > 1) {
-		ilda = argv[1];
-		strcat(ilda, ".las");
-	}
+	queue = malloc(sizeof(Queue));
+	queue->read_queue_lock = read_queue_lock;
+	queue->queue_not_empty= queue_not_empty;
+
 	pthread_t message_listener, animation_player;
-//	if (pthread_create(&message_listener,NULL, messageListener, NULL))
-//		perror("Can't create message_handler thread");
+	if (pthread_create(&message_listener,NULL, messageListener, NULL))
+		perror("Can't create message_handler thread");
 	if (pthread_create(&animation_player, NULL, animationPlayer, NULL))
 		perror("Can't create ilda_player thread");
 	void* result;
 
-//	pthread_join(message_listener, &result);
+	pthread_join(message_listener, &result);
 	pthread_join(animation_player, &result);
 
 	syslog(LOG_INFO, "%s", "Stopping LasForce...");
