@@ -31,8 +31,17 @@ int destroy_animation(Animation *animation) {
 	return 0;
 }
 
+int free_command(Command *command) {
+	free(command->action);
+	if (command->value != NULL) {
+		free(command->value);
+	}
+	free(command);
+	return 0;
+}
+
 int free_queue_item(QueueItem *queueItem) {
-//	free(queueItem->command);
+	free_command(queueItem->command);
 	free(queueItem);
 	return 0;
 }

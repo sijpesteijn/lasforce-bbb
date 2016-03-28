@@ -6,7 +6,7 @@
  */
 
 #include "../../include/objects/socket_handler.h"
-#include "../../include/jansson/jansson.h"
+#include "../../include/animation/deserialize.h"
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <stdio.h>
@@ -115,30 +115,6 @@ void freeSocketMessage(socket_message* socketMessage) {
 	}
 }
 
-static Command *deserialize(json_t* root) {
-	Command *command = malloc(sizeof(Command));
-	return command;
-}
-
-void* deserializeCommand(socket_message *message) {
-	json_t* root;
-	json_error_t error;
-	root = json_loadb(message->content, message->length, 0, &error);
-	if (!root) {
-		fprintf(stderr, "error: on line %d: %s\n", error.line, error.text);
-	}
-	if (!json_is_object(root)) {
-		fprintf(stderr, "error: commit data is not an object\n");
-		json_decref(root);
-	}
-	Command *command = deserialize(root);
-	// temporary
-	command->action = malloc(sizeof(char)*message->length);
-	strcpy(command->action,message->content);
-	return command;
-}
-
-
 void SocketHandler_listen(void *self) {
 	SocketHandler *handler = self;
 	struct sockaddr_storage client_addr;
@@ -153,7 +129,8 @@ void SocketHandler_listen(void *self) {
 		for(;;) {
 			message = readSocketMessage(connect_d);
 			if(message->length > 0) {
-				Command *command = deserializeCommand(message);
+				printf("Msg: %s\n", message->content);
+				Command *command = command_deserialize(message->content, message->length);
 				QueueItem *queue_item = malloc(sizeof(struct QueueItem));
 				queue_item->command = command;
 				queue_item->next = NULL;

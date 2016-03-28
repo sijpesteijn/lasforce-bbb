@@ -11,15 +11,11 @@
 #include <pthread.h>
 
 #include "../include/objects/object.h"
-#include "../include/objects/laser.h"
-#include "../include/animation/animation.h"
-#include "../include/animation/deserialize.h"
-#include "../include/objects/animation_player.h"
 #include "../include/objects/socket_handler.h"
-#include "examples.h"
-#include "readildafile.h"
+#include "../include/objects/laser.h"
+#include "../include/objects/animation_player.h"
+#include "../include/animation/animation.h"
 
-Queue *queue = NULL;
 pthread_mutex_t read_queue_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t queue_not_empty=PTHREAD_COND_INITIALIZER;
 
@@ -45,16 +41,15 @@ Object PlayerProto = {
 
 void* messageListener(void* param) {
 	SocketHandler *handler = NEW(SocketHandler, "Socket handler");
-	handler->queue = queue;
+	handler->queue = (Queue *)param;
 	handler->_(listen)(handler);
 	return NULL;
 }
 
 void* animationPlayer(void* param) {
-	Laser *laser = NEW(Laser,"Beaglebone Black");
 	Player *player = NEW(Player, "Animation Player");
-	player->laser = laser;
-	player->queue = queue;
+	player->laser = NEW(Laser,"Beaglebone Black");
+	player->queue = (Queue *)param;
 	player->_(listen)(player);
 	return NULL;
 }
@@ -63,14 +58,14 @@ int main(int argc, char *argv[]) {
 	openlog("lasforce-bbb", LOG_PID | LOG_CONS | LOG_NDELAY | LOG_NOWAIT, LOG_LOCAL0);
 	syslog(LOG_INFO, "%s", "Starting LasForce...");
 
-	queue = malloc(sizeof(Queue));
+	Queue *queue = malloc(sizeof(Queue));
 	queue->read_queue_lock = read_queue_lock;
 	queue->queue_not_empty= queue_not_empty;
 
 	pthread_t message_listener, animation_player;
-	if (pthread_create(&message_listener,NULL, messageListener, NULL))
+	if (pthread_create(&message_listener,NULL, messageListener, (void *)queue))
 		perror("Can't create message_handler thread");
-	if (pthread_create(&animation_player, NULL, animationPlayer, NULL))
+	if (pthread_create(&animation_player, NULL, animationPlayer, (void *)queue))
 		perror("Can't create ilda_player thread");
 	void* result;
 

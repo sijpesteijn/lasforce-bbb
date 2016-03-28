@@ -25,14 +25,14 @@ int getInt(json_t* root, char* key) {
 
 char* getString(json_t* root, char* key) {
 	json_t *value = json_object_get(root, key);
-	if (value == NULL) {
-		syslog(LOG_DEBUG, "Can't find the key: %s in json: %s", key, json_dumps(root, 0));
-		return "";
-	} else {
+	if (json_is_string(value)) {
 		char* val = strdup(json_string_value(value));
 //		syslog(LOG_DEBUG, "getString: %s\n", val);
 		json_decref(value);
 		return val;
+	} else {
+		syslog(LOG_DEBUG, "Can't find the key: %s in json: %s", key, json_dumps(root, 0));
+		return "";
 	}
 }
 
@@ -94,7 +94,7 @@ Frame *deserializeFrame(json_t* frameJson) {
 	return frame;
 }
 
-static Animation *deserialize(json_t* root) {
+static Animation *deserializeAnimation(json_t* root) {
 	Frame **frames = NULL;
 	int totalFrames = 0;
 
@@ -131,6 +131,29 @@ Animation* animation_deserialize(char* smsg, int smsgl) {
 		fprintf(stderr, "error: commit data is not an object\n");
 		json_decref(root);
 	}
-	Animation *animation = deserialize(root);
+	Animation *animation = deserializeAnimation(root);
 	return animation;
 }
+
+static Command *deserializeCommand(json_t* root) {
+	Command *command = malloc(sizeof(Command));
+	command->action = getString(root, "cmd");
+	command->value = getString(root, "value");
+	return command;
+}
+
+Command* command_deserialize(char* smsg, int smsgl) {
+	json_t* root;
+	json_error_t error;
+	root = json_loadb(smsg, smsgl, 0, &error);
+	if (!root) {
+		fprintf(stderr, "error: on line %d: %s\n", error.line, error.text);
+	}
+	if (!json_is_object(root)) {
+		fprintf(stderr, "error: commit data is not an object\n");
+		json_decref(root);
+	}
+	Command *command = deserializeCommand(root);
+	return command;
+}
+

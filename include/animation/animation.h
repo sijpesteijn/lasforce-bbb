@@ -40,7 +40,8 @@ typedef struct {
 } Animation;
 
 typedef struct {
-	char *action;
+	const char *action;
+	const char *value;
 } Command;
 
 typedef struct QueueItem {
