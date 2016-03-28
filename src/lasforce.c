@@ -59,6 +59,8 @@ int main(int argc, char *argv[]) {
 	syslog(LOG_INFO, "%s", "Starting LasForce...");
 
 	Queue *queue = malloc(sizeof(Queue));
+	queue->current = NULL;
+	queue->last = NULL;
 	queue->read_queue_lock = read_queue_lock;
 	queue->queue_not_empty= queue_not_empty;
 

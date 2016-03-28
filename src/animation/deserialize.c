@@ -135,10 +135,28 @@ Animation* animation_deserialize(char* smsg, int smsgl) {
 	return animation;
 }
 
+static AnimationInfo *getAnimationInfo(json_t* root) {
+	AnimationInfo *info = malloc(sizeof(AnimationInfo));
+	json_t *infoJson = json_object_get(root, "value");
+	info->name = getString(infoJson, "name");
+	info->repeat = getInt(infoJson,"repeat");
+	return info;
+}
+
 static Command *deserializeCommand(json_t* root) {
 	Command *command = malloc(sizeof(Command));
-	command->action = getString(root, "cmd");
-	command->value = getString(root, "value");
+	command->value = NULL;
+	const char *action = getString(root, "cmd");
+	if (strcmp(action, "play") == 0) {
+		command->action = play;
+		command->value = getAnimationInfo(root);
+	} else if (strcmp(action, "stop") == 0) {
+		command->action = stop;
+	} else if (strcmp(action, "halt") == 0) {
+		command->action = halt;
+	} else if (strcmp(action, "list_queue") == 0) {
+		command->action = list_queue;
+	}
 	return command;
 }
 

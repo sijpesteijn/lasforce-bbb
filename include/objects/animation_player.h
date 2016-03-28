@@ -16,6 +16,7 @@ struct Player {
 	Laser *laser;
 	Queue *queue;
 	int run;
+	int repeat_animation;
 	double frame_time;
 };
 

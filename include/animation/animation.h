@@ -10,6 +10,13 @@
 
 #include <pthread.h>
 
+typedef enum {
+	play,
+	stop,
+	halt,
+	list_queue
+} CMD;
+
 typedef struct {
 	int red;
 	int green;
@@ -40,8 +47,8 @@ typedef struct {
 } Animation;
 
 typedef struct {
-	const char *action;
-	const char *value;
+	CMD action;
+	void *value;
 } Command;
 
 typedef struct QueueItem {
@@ -56,7 +63,12 @@ typedef struct Queue {
 	struct QueueItem *last;
 } Queue;
 
+typedef struct AnimationInfo {
+	int repeat;
+	const char *name;
+} AnimationInfo;
+
 int destroy_animation(Animation *animation);
-int free_queue_item(QueueItem *queueItem);
+int free_queue_item(QueueItem *queueItem, int inclusive_next);
 
 #endif /* INCLUDE_ILDA_H_ */

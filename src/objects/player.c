@@ -6,6 +6,7 @@
  */
 #include "../../include/objects/animation_player.h"
 #include "../../include/animation/animation.h"
+#include "../../include/animation/deserialize.h"
 #include "../readildafile.h"
 
 #include <math.h>
@@ -18,6 +19,7 @@ static Player *player;
 int Player_init(void *self) {
 	Player *plyr = self;
 	plyr->run = 0;
+	plyr->repeat_animation = 0;
 	player = plyr;
 	return 1;
 }
@@ -27,6 +29,7 @@ void Player_douse(void *self) {
 	player->laser->_(setRed)(player->laser, 0);
 	player->laser->_(setGreen)(player->laser, 0);
 	player->laser->_(setBlue)(player->laser, 0);
+	player->laser->_(setCoordinate)(player->laser, 0, 0);
 }
 
 int calculateDistance(int x, int y) {
@@ -71,20 +74,10 @@ void frame_draw(Frame *frame) {
 	} while(diff < player->frame_time * 1000);
 }
 
-int is_stop_signal(QueueItem *queueItem) {
-	if (queueItem != NULL) {
-		 const char *action = queueItem->command->action;
-		 printf("NEXT: %s\n", action);
-		 if (strcmp(action, "halt") == 0 || strcmp(action,"stop") == 0)
-			 return 1;
-	}
-	return 0;
-}
-
 static void* run_animation(void *ani) {
 	Animation *animation = ani;
 	int i, total_frames = animation->nrOfFrames;
-	int repeat = animation->repeat;
+	int repeat = player->repeat_animation;
 	player->run = 1;
 	while(player->run && (repeat == -1 || repeat > 0)) {
 		for(i=0;i<total_frames;i++) {
@@ -93,6 +86,7 @@ static void* run_animation(void *ani) {
 		if (repeat > 0)
 			repeat--;
 	}
+	printf("Finished with: %i\n", animation->nrOfFrames);
 	player->run = 0;
 	player->_(douse)(player);
 
@@ -100,21 +94,32 @@ static void* run_animation(void *ani) {
 }
 
 void handleCommand(Command *command) {
-	printf("Action: %s\n", command->action);
-	if (strcmp(command->action, "halt") == 0) {
-		player->run = 0;
-	} else if (strcmp(command->action, "play") == 0) {
-		char* data;
-		char file[255];
-		strcpy(file, "/root/bbclib/examples/");
-		strcat(file, command->value);
-		int length = readFile(file, &data);
-		Animation *animation = animation_deserialize(data, length);
-		if (pthread_create(&runner,NULL, run_animation, (void *)animation))
-			perror("Can't create message_handler thread");
-
-	} else if (strcmp(command->action, "stop") == 0) {
-		player->run = 0;
+	switch(command->action) {
+		case stop:
+		case halt:
+			player->run = 0;
+			break;
+		case play:
+		{
+			if (player->run) {
+				if (player->repeat_animation == -1) // force stop if infinete animation
+					player->run = 0;
+				void* result;
+				printf("Waiting...\n");
+				pthread_join(runner, &result); // wait for the animation to finish.
+			}
+			char* data;
+			char file[255];
+			strcpy(file, "/root/bbclib/examples/");
+			AnimationInfo *info = (AnimationInfo *)command->value;
+			strcat(file, info->name);
+			int length = readFile(file, &data);
+			Animation *animation = animation_deserialize(data, length);
+			player->repeat_animation = info->repeat;
+			if (pthread_create(&runner,NULL, run_animation, (void *)animation))
+				perror("Can't create message_handler thread");
+			break;
+		}
 	}
 }
 
@@ -131,10 +136,10 @@ void Player_listen(void *self) {
 			handleCommand(player->queue->current->command);
 			if (player->queue->current->next != NULL) {
 				QueueItem *next = player->queue->current->next;
-				free_queue_item(player->queue->current);
+				free_queue_item(player->queue->current, 0);
 				player->queue->current = next;
 			} else {
-				free_queue_item(player->queue->current);
+				free_queue_item(player->queue->current, 0);
 				player->queue->current = NULL;
 			}
 		} else {

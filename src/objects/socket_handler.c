@@ -55,6 +55,7 @@ int SocketHandler_init(void *self) {
 int getMessageLength(int connect_d) {
 	int message_size_length = 13;
 	char message_size[message_size_length];
+	memset(message_size,0,message_size_length*sizeof(char));
 	int n = read(connect_d, message_size, message_size_length - 1);
 	if (n < 0) {
 		perror("Can't reading size from socket");
@@ -137,17 +138,23 @@ void SocketHandler_listen(void *self) {
 
 				pthread_mutex_lock(&handler->queue->read_queue_lock);
 
-				// does not seem to work.
-				if (handler->queue->last == NULL) {
+				if (command->action == halt) {
+					QueueItem *current = handler->queue->current;
+					free_queue_item(current, 1);
+					handler->queue->current = queue_item;
 					handler->queue->last = queue_item;
 				} else {
-					handler->queue->last->next = queue_item;
-					handler->queue->last = handler->queue->last->next;
-				}
+					if (handler->queue->last == NULL) {
+						handler->queue->last = queue_item;
+					} else {
+						handler->queue->last->next = queue_item;
+						handler->queue->last = handler->queue->last->next;
+					}
 
-				if (handler->queue->current == NULL) {
-					printf("NEW QUEUE ELEMENT\n");
-					handler->queue->current = queue_item;
+					if (handler->queue->current == NULL) {
+						printf("NEW QUEUE ELEMENT\n");
+						handler->queue->current = queue_item;
+					}
 				}
 				pthread_mutex_unlock(&handler->queue->read_queue_lock);
 				pthread_cond_signal(&handler->queue->queue_not_empty);
