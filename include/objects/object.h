@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <syslog.h>
 
 typedef struct {
     char *description;
@@ -40,7 +41,6 @@ void *Object_new(size_t size, Object proto, char *description);
 
 #define NEW(T, N) Object_new(sizeof(T), T##Proto, N)
 #define _(N) proto.N
-
 
 
 #endif /* EXAMPLES_OBJECTS_OBJECT_H_ */

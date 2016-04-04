@@ -14,8 +14,12 @@ typedef enum {
 	play,
 	stop,
 	halt,
-	list_queue
+	list
 } CMD;
+
+typedef enum {
+	queue
+} INFO;
 
 typedef struct {
 	int red;
@@ -42,7 +46,9 @@ typedef struct {
 typedef struct {
 	int id;
 	int repeat;
-	int nrOfFrames;
+	int frame_time;
+	const char *name;
+	int total_frames;
 	Frame **frames;
 } Animation;
 
@@ -57,8 +63,9 @@ typedef struct QueueItem {
 } QueueItem;
 
 typedef struct Queue {
-	pthread_mutex_t read_queue_lock;
+	pthread_mutex_t queue_lock;
 	pthread_cond_t queue_not_empty;
+	pthread_cond_t player_finished;
 	struct QueueItem *current;
 	struct QueueItem *last;
 } Queue;
@@ -68,7 +75,7 @@ typedef struct AnimationInfo {
 	const char *name;
 } AnimationInfo;
 
-int destroy_animation(Animation *animation);
+int free_animation(Animation *animation);
 int free_queue_item(QueueItem *queueItem, int inclusive_next);
 
 #endif /* INCLUDE_ILDA_H_ */

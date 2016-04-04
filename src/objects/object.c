@@ -97,7 +97,6 @@ void *Object_new(size_t size, Object proto,  char *description)
         el->destroy(el);
         return NULL;
     } else {
-    	syslog(LOG_INFO, "%s","Object created.");
         // all done, we made an object of any type
         return el;
     }

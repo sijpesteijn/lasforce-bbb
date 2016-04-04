@@ -8,10 +8,11 @@
 #include "../../include/animation/animation.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <syslog.h>
 
-int destroy_animation(Animation *animation) {
+int free_animation(Animation *animation) {
 	int i=0;
-	for(i=0;i<animation->nrOfFrames;i++) {
+	for(i=0;i<animation->total_frames;i++) {
 		Frame *frame = animation->frames[i];
 		int j = 0;
 		for(j=0;j<frame->totalSegments;j++) {
@@ -32,16 +33,15 @@ int destroy_animation(Animation *animation) {
 }
 
 int free_command(Command *command) {
-	if (command->value != NULL) {
-		free(command->value);
-	}
+//	if (command->value != NULL) {
+//		free(command->value);
+//	}
 	free(command);
 	return 0;
 }
 
 int free_queue_item(QueueItem *queueItem, int inclusive_next) {
 	if (queueItem != NULL) {
-		free_command(queueItem->command);
 		if (inclusive_next) {
 			free_queue_item(queueItem->next, inclusive_next);
 		}

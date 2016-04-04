@@ -12,7 +12,7 @@
 #include "../animation/animation.h"
 
 typedef struct {
-	char *content;
+	const char *content;
 	unsigned long length;
 } socket_message;
 

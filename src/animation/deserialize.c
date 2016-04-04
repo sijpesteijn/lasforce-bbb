@@ -10,6 +10,24 @@
 #include <string.h>
 #include <syslog.h>
 
+json_t* parseRoot(const char *buffer, size_t buflen) {
+	json_t* root;
+	json_error_t error;
+	root = json_loadb(buffer, buflen, 0, &error);
+	if (!root) {
+		fprintf(stderr, "error: on line %d: %s\n", error.line, error.text);
+		syslog(LOG_ERR,"deserialize parseRoot: error on line %d: %s\n", error.line, error.text);
+		return NULL;
+	}
+	if (!json_is_object(root)) {
+		fprintf(stderr, "error: commit data is not an object\n");
+		syslog(LOG_ERR,"deserialize parseRoot: error commit data is not an object\n");
+		json_decref(root);
+		return NULL;
+	}
+	return root;
+}
+
 int getInt(json_t* root, char* key) {
 	json_t *value = json_object_get(root, key);
 	if (value == NULL) {
@@ -17,7 +35,6 @@ int getInt(json_t* root, char* key) {
 		return 0;
 	} else {
 		int val = json_number_value(value);
-//		syslog(LOG_DEBUG, "getInt: %i\n", val);
 		json_decref(value);
 		return val;
 	}
@@ -27,7 +44,6 @@ char* getString(json_t* root, char* key) {
 	json_t *value = json_object_get(root, key);
 	if (json_is_string(value)) {
 		char* val = strdup(json_string_value(value));
-//		syslog(LOG_DEBUG, "getString: %s\n", val);
 		json_decref(value);
 		return val;
 	} else {
@@ -100,8 +116,10 @@ static Animation *deserializeAnimation(json_t* root) {
 
 	Animation *animation = malloc(sizeof(Animation));
 	animation->id = getInt(root, "id");
+	animation->name = getString(root, "name");
 	animation->repeat = getInt(root, "repeat");
-	animation->nrOfFrames = getInt(root, "total_frames");
+	animation->frame_time = getInt(root, "frame_time");
+	animation->total_frames = getInt(root, "total_frames");
 
 	json_t *framesJson = json_object_get(root, "frames");
 	if(framesJson != NULL) {
@@ -120,27 +138,11 @@ static Animation *deserializeAnimation(json_t* root) {
 }
 
 Animation* animation_deserialize(char* smsg, int smsgl) {
-	json_t* root;
-	json_error_t error;
-
-	root = json_loadb(smsg, smsgl, 0, &error);
-	if (!root) {
-		fprintf(stderr, "error: on line %d: %s\n", error.line, error.text);
-	}
-	if (!json_is_object(root)) {
-		fprintf(stderr, "error: commit data is not an object\n");
-		json_decref(root);
-	}
+	json_t* root = parseRoot(smsg, smsgl);
+	if (root == NULL)
+		return NULL;
 	Animation *animation = deserializeAnimation(root);
 	return animation;
-}
-
-static AnimationInfo *getAnimationInfo(json_t* root) {
-	AnimationInfo *info = malloc(sizeof(AnimationInfo));
-	json_t *infoJson = json_object_get(root, "value");
-	info->name = getString(infoJson, "name");
-	info->repeat = getInt(infoJson,"repeat");
-	return info;
 }
 
 static Command *deserializeCommand(json_t* root) {
@@ -149,28 +151,21 @@ static Command *deserializeCommand(json_t* root) {
 	const char *action = getString(root, "cmd");
 	if (strcmp(action, "play") == 0) {
 		command->action = play;
-		command->value = getAnimationInfo(root);
+		command->value = deserializeAnimation(json_object_get(root, "value"));
 	} else if (strcmp(action, "stop") == 0) {
 		command->action = stop;
 	} else if (strcmp(action, "halt") == 0) {
 		command->action = halt;
-	} else if (strcmp(action, "list_queue") == 0) {
-		command->action = list_queue;
+	} else if (strcmp(action, "list") == 0) {
+		command->action = list;
 	}
 	return command;
 }
 
-Command* command_deserialize(char* smsg, int smsgl) {
-	json_t* root;
-	json_error_t error;
-	root = json_loadb(smsg, smsgl, 0, &error);
-	if (!root) {
-		fprintf(stderr, "error: on line %d: %s\n", error.line, error.text);
-	}
-	if (!json_is_object(root)) {
-		fprintf(stderr, "error: commit data is not an object\n");
-		json_decref(root);
-	}
+Command* command_deserialize(const char* smsg, unsigned long smsgl) {
+	json_t* root = parseRoot(smsg, smsgl);
+	if (root == NULL)
+		return NULL;
 	Command *command = deserializeCommand(root);
 	return command;
 }
