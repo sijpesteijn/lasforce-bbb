@@ -23,7 +23,7 @@ int Player_init(void *self) {
 	plyr->run = 0;
 	plyr->currentAnimation = NULL;
 	player = plyr;
-	syslog(LOG_INFO,"Player: initialized.");
+	syslog(LOG_INFO,"Animationplayer: initialized.");
 	return 1;
 }
 
@@ -83,56 +83,57 @@ static void* run_animation(void *ani) {
 	int repeat = animation->repeat;
 	player->currentAnimation = animation;
 	player->run = 1;
-	syslog(LOG_DEBUG,"Player: Start play of animation %s %i number of times.", animation->name, animation->repeat);
-	while(player->run && (repeat == -1 || repeat > 0)) {
+	syslog(LOG_DEBUG,"Animationplayer: Start play of animation %s %i number of times.", animation->name, animation->repeat);
+	while(player->run == 1 && (repeat == -1 || repeat > 0)) {
 		for(i=0;i<total_frames;i++) {
 			frame_draw(animation->frames[i]);
 		}
 		if (repeat > 0)
 			repeat--;
 	}
-	syslog(LOG_DEBUG,"Player: stopped animation %s, repeat was %i", animation->name, animation->repeat);
+	syslog(LOG_DEBUG,"Animationplayer: stopped animation %s, repeat was %i", animation->name, animation->repeat);
 	player->run = 0;
 	player->_(douse)(player);
 	player->currentAnimation = NULL;
 	free_animation(animation);
-	pthread_cond_signal(&player->queue->player_finished);
 	return NULL;
 }
 
 static void handleCommand(Command *command) {
+	void* result;
 	switch(command->action) {
 		case stop:
 		case halt:
+		{
 			player->run = 0;
+			if (pthread_join(runner, &result) != 0) {
+				syslog(LOG_ERR,"Animationplayer: failed to wait for current player thread.");
+			}
 			break;
+		}
 		case play:
 		{
 			if (player->run) {
-				syslog(LOG_DEBUG,"Player: there is an animation playing.");
+				syslog(LOG_DEBUG,"Animationplayer: there is an animation playing.");
 				if(player->currentAnimation->repeat == -1) {
-					syslog(LOG_DEBUG,"Player: force player to stop current animation.");
+					syslog(LOG_DEBUG,"Animationplayer: force player to stop current animation.");
 					player->run = 0;
 				}
-
-				pthread_cond_wait(&player->queue->player_finished, &player->queue->queue_lock);
-				void* result;
-				syslog(LOG_DEBUG,"Player: waiting for animation to finish. %i", id++);
-				if (pthread_join(runner, &result) != 0) {
-					syslog(LOG_ERR,"Player: failed to wait for current player thread.");
-				}
-				syslog(LOG_DEBUG,"Player: Animation finished playing.");
 			}
-			syslog(LOG_DEBUG,"Player: preparing animation player.");
+			syslog(LOG_DEBUG,"Animationplayer: waiting for animation to finish.");
+			if (pthread_join(runner, &result) != 0) {
+				syslog(LOG_ERR,"Animationplayer: failed to wait for current player thread.");
+			}
+			syslog(LOG_DEBUG,"Animationplayer: preparing animation player.");
 			Animation *animation = (Animation*)command->value;
 			if (pthread_create(&runner,NULL, run_animation, (void *)animation)) {
-				syslog(LOG_ERR,"Player: Can't create message_handler thread");
+				syslog(LOG_ERR,"Animationplayer: Can't create message_handler thread");
 				perror("Can't create message_handler thread");
 			}
 			break;
 		}
 		case list:
-			syslog(LOG_ERR,"Player: can not handle list requests.");
+			syslog(LOG_ERR,"Animationplayer: can not handle list requests.");
 			break;
 	}
 	free(command);
@@ -142,15 +143,15 @@ void Player_listen(void *self) {
 	Player *player = self;
 	for(;;) {
 		if (pthread_mutex_lock(&player->queue->queue_lock) != 0) {
-			syslog(LOG_ERR,"Player: Can't get the lock on the queue.");
+			syslog(LOG_ERR,"Animationplayer: Can't get the lock on the queue.");
 		}
 
 		if (player->queue->current == NULL) {
 			pthread_cond_wait(&player->queue->queue_not_empty, &player->queue->queue_lock);
 		}
-		syslog(LOG_DEBUG,"Player: queue is not empty.");
+		syslog(LOG_DEBUG,"Animationplayer: queue is not empty.");
 		QueueItem *current = player->queue->current;
-		handleCommand(current->command);
+		Command *command = current->command;
 
 		if (current->next == NULL) {
 			free_queue_item(current, 0);
@@ -161,9 +162,10 @@ void Player_listen(void *self) {
 			free_queue_item(current, 0);
 			player->queue->current = next;
 		}
-		syslog(LOG_DEBUG,"Player: queue popped. %s", getQueueListJson(player->queue));
+		syslog(LOG_DEBUG,"Animationplayer: queue popped. %s", getQueueListJson(player->queue));
 		if (pthread_mutex_unlock(&player->queue->queue_lock) != 0) {
-			syslog(LOG_ERR,"Player: Can't release the lock on the queue.");
+			syslog(LOG_ERR,"Animationplayer: Can't release the lock on the queue.");
 		}
+		handleCommand(command);
 	}
 }

@@ -10,7 +10,7 @@
 
 #include "animation.h"
 
-Animation* animation_deserialize(char* smsg, int smsgl);
-Command* command_deserialize(char* smsg, int smsgl);
+Animation* animation_deserialize(const char* smsg, int smsgl);
+Command* command_deserialize(const char* smsg, int smsgl);
 
 #endif /* ANIMATION_DESERIALIZE_H_ */

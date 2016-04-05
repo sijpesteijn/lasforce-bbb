@@ -19,7 +19,6 @@
 // Create a lock and thread condition
 pthread_mutex_t queue_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t queue_not_empty = PTHREAD_COND_INITIALIZER;
-pthread_cond_t player_finished = PTHREAD_COND_INITIALIZER;
 
 Object SocketHandlerProto = { .init = SocketHandler_init, .listen =
 		SocketHandler_listen };
@@ -77,7 +76,6 @@ int main(int argc, char *argv[]) {
 	queue->last = NULL;
 	queue->queue_lock = queue_lock;
 	queue->queue_not_empty = queue_not_empty;
-	queue->player_finished = player_finished;
 
 	pthread_t message_listener, animation_player;
 	if (pthread_create(&message_listener, NULL, messageListener,

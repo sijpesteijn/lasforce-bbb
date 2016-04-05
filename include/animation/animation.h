@@ -65,7 +65,6 @@ typedef struct QueueItem {
 typedef struct Queue {
 	pthread_mutex_t queue_lock;
 	pthread_cond_t queue_not_empty;
-	pthread_cond_t player_finished;
 	struct QueueItem *current;
 	struct QueueItem *last;
 } Queue;
