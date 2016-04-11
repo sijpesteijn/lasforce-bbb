@@ -71,7 +71,7 @@ int getMessageLength(int connect_d) {
 		exit(1);
 	}
 	message_size[n + 1] = '\0';
-	syslog(LOG_DEBUG, "Sockethandler: get message length: %s", message_size);
+//	syslog(LOG_DEBUG, "Sockethandler: get message length: %s", message_size);
 	return atol(message_size);
 }
 
@@ -194,8 +194,7 @@ void SocketHandler_listen(void *self) {
 					handler->queue->last = queue_item;
 				} else {
 					if (command->action == list) {
-						sendSocketMessage(connect_d,
-								getQueueList(handler->queue));
+						sendSocketMessage(connect_d, getQueueList(handler->queue));
 					} else {
 						if (handler->queue->last == NULL) {
 							handler->queue->last = queue_item;

@@ -12,8 +12,12 @@
 void populateListInfo(json_t *list_array, QueueItem *queueItem) {
 	if (queueItem != NULL) {
 		Command *command = queueItem->command;
-		Animation *animation = (Animation*)command->value;
-		json_array_append( list_array, json_string(animation->name));
+		if (command->action == play) {
+			Animation *animation = (Animation*)command->value;
+			json_array_append( list_array, json_string(animation->name));
+		} else if (command->action == stop) {
+			json_array_append( list_array, json_string("stop"));
+		}
 		populateListInfo(list_array, queueItem->next);
 	}
 }
