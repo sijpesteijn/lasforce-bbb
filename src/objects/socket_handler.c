@@ -192,6 +192,10 @@ void SocketHandler_listen(void *self) {
 					free_queue_item(current, 1);
 					handler->queue->current = queue_item;
 					handler->queue->last = queue_item;
+					syslog(LOG_DEBUG, "Sockethandler: Queue pushed. %s",
+							getQueueListJson(handler->queue));
+					pthread_cond_signal(&handler->queue->queue_not_empty);
+
 				} else {
 					if (command->action == list) {
 						sendSocketMessage(connect_d, getQueueList(handler->queue));

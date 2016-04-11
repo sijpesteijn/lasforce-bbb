@@ -53,6 +53,10 @@ typedef struct {
 } Animation;
 
 typedef struct {
+	Animation **animations;
+} Sequence;
+
+typedef struct {
 	CMD action;
 	void *value;
 } Command;
